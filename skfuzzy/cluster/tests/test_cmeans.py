@@ -80,6 +80,29 @@ def test_fuzzy_cmeans_fpc():
 
 
 @nose.with_setup(setup)
+def test_subtractive_clustering_fuzzy_cmeans():
+    """
+    Test fuzzy c-means starting with subtractive clusters.
+
+    """
+    global features, x_corr, y_corr
+
+    cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(
+        features, None, 2., error=0.005, maxiter=1000, init=None)
+
+    cntr_2, u_2, u0_2, d_2, jm_2, p_2, fpc_2 = fuzz.cluster.cmeans(
+        features, None, 2., error=0.005, maxiter=1000, init=None)
+
+    # Should be exactly identical
+    np.testing.assert_array_equal(cntr, cntr_2)
+    np.testing.assert_array_equal(u, u_2)
+    np.testing.assert_array_equal(u0, u0_2)
+    np.testing.assert_array_equal(d, d_2)
+    np.testing.assert_array_equal(jm, jm_2)
+    assert p == p_2
+    assert fpc == fpc_2
+
+@nose.with_setup(setup)
 def test_fuzzy_cmeans_predict():
     """
     Test ability to classify new data.

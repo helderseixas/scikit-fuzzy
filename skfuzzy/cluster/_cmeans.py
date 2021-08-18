@@ -3,6 +3,7 @@ cmeans.py : Fuzzy C-means clustering algorithm.
 """
 import numpy as np
 from scipy.spatial.distance import cdist
+from .subtractive_clustering import subtractive_clustering
 
 from .normalize_columns import normalize_columns, normalize_power_columns
 
@@ -26,14 +27,18 @@ def _cmeans0(data, u_old, c, m, metric):
     data = data.T
     cntr = um.dot(data) / np.atleast_2d(um.sum(axis=1)).T
 
-    d = _distance(data, cntr, metric)
-    d = np.fmax(d, np.finfo(np.float64).eps)
+    u, d = _calculating_u(data, cntr, m, metric)
 
     jm = (um * d ** 2).sum()
 
-    u = normalize_power_columns(d, - 2. / (m - 1))
-
     return cntr, u, jm, d
+
+
+def _calculating_u(data, cntr, m, metric):
+    d = _distance(data, cntr, metric)
+    d = np.fmax(d, np.finfo(np.float64).eps)
+    u = normalize_power_columns(d, - 2. / (m - 1))
+    return u, d
 
 
 def _distance(data, centers, metric='euclidean'):
@@ -85,7 +90,7 @@ def _fp_coeff(u):
 
 def cmeans(data, c, m, error, maxiter,
            metric='euclidean',
-           init=None, seed=None):
+           init=None, seed=None, subtractive_clustering_influence_range=0.5):
     """
     Fuzzy c-means clustering algorithm [1].
 
@@ -152,13 +157,22 @@ def cmeans(data, c, m, error, maxiter,
            dimensional spaces. 2012. Contemporary Theory and Pragmatic
            Approaches in Fuzzy Computing Utilization, 1.
     """
+    if c is None:
+        cntr = subtractive_clustering(data, subtractive_clustering_influence_range)
+        c = len(cntr)
+    else:
+        cntr = None
+
     # Setup u0
     if init is None:
+        n = data.shape[1]
         if seed is not None:
             np.random.seed(seed=seed)
-        n = data.shape[1]
-        u0 = np.random.rand(c, n)
-        u0 = normalize_columns(u0)
+        if cntr is None:
+            u0 = np.random.rand(c, n)
+            u0 = normalize_columns(u0)
+        else:
+            u0, _ = _calculating_u(data.T, cntr, m, metric)
         init = u0.copy()
     u0 = init
     u = np.fmax(u0, np.finfo(np.float64).eps)
