@@ -7,20 +7,23 @@ __author__ = 'Hélder Seixas Lima'
 # Chiu, S., "Fuzzy Model Identification Based on Cluster Estimation," Journal of Intelligent & Fuzzy Systems, Vol. 2, No. 3, Sept. 1994.
 
 import numpy as np
+import pandas as pd
 
-def subtractive_clustering(dataset, ra = 0.5):
+def subtractive_clustering(dataset, ra = 0.5, rejection_ratio = 0.15, acceptance_ratio = 0.5):
     # Squash factor
     rb = ra * 1.5
     # Acceptance ratio
-    Eup = 0.5
+    Eup = acceptance_ratio
     # Rejection ratio
-    Edown = 0.15
+    Edown = rejection_ratio
     alfa = 4 / ra ** 2
     beta = 4 / rb ** 2
     cluster_center = []
-
-    #data_matrix = dataset.values
-    data_matrix = dataset.T
+    
+    if type(dataset) == np.ndarray:
+        data_matrix = pd.DataFrame(dataset)
+    else:
+        data_matrix = dataset
 
     # Step 1: Calculate the likelihood that each data point would define a cluster center, based on the density of surrounding data points.
     size = len(data_matrix)

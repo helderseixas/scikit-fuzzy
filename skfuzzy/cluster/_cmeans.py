@@ -3,6 +3,8 @@ cmeans.py : Fuzzy C-means clustering algorithm.
 """
 import numpy as np
 from scipy.spatial.distance import cdist
+
+from .kmeans_pp import initialize
 from .subtractive_clustering import subtractive_clustering
 
 from .normalize_columns import normalize_columns, normalize_power_columns
@@ -90,7 +92,8 @@ def _fp_coeff(u):
 
 def cmeans(data, c, m, error, maxiter,
            metric='euclidean',
-           init=None, seed=None, subtractive_clustering_influence_range=0.5):
+           init=None, seed=None, centers_init='random', centers_init_subtractive_influence_range=0.5,
+           centers_init_subtractive_rejection_ratio = 0.15, centers_init_subtractive_acceptance_ratio = 0.5):
     """
     Fuzzy c-means clustering algorithm [1].
 
@@ -117,6 +120,31 @@ def cmeans(data, c, m, error, maxiter,
     seed : int
         If provided, sets random seed of init. No effect if init is
         provided. Mainly for debug/testing purposes.
+    centers_init : {'random', 'subtractive', 'k-means++', ndarray}, default='random'
+        Method for initialization:
+
+        'random': choose `c` observations (rows) at random from data
+        for the initial centroids.
+
+        'subtractive' : The subtractive clustering method can be used to determine the number of clusters 'c'
+        and their initial values for initialzing fuzzy c-means. Check the parameters
+        centers_init_subtractive_influence_range, centers_init_subtractive_rejection_ratio, and
+        centers_init_subtractive_acceptance_ratio to set the algorithm.
+
+        'k-means++' : selects 'c' initial cluster centers for fuzzy c-means
+        clustering in a smart way to speed up convergence.
+
+        If an ndarray is passed, it should be of shape (n_clusters, n_features)
+        and gives the initial centers.
+    centers_init_subtractive_influence_range : int (positive)
+        Influence range (ra) for subtractive clustering initialization algorithm. The influence range is
+        the radious defining a neighborhood.
+    centers_init_subtractive_rejection_ratio : float
+        Rejection ratio for subtractive clustering initialization algorithm. This parameter specifies a
+        threshold below which we will definitely reject new groups.
+    centers_init_subtractive_acceptance_ratio : float
+        Acceptance ratio for subtractive clustering initialization algorithm. This parameter specifies a
+        threshold above which we will definitely accept a new group.
 
     Returns
     -------
@@ -157,11 +185,21 @@ def cmeans(data, c, m, error, maxiter,
            dimensional spaces. 2012. Contemporary Theory and Pragmatic
            Approaches in Fuzzy Computing Utilization, 1.
     """
-    if c is None:
-        cntr = subtractive_clustering(data, subtractive_clustering_influence_range)
+    if type(centers_init) == np.ndarray:
+        cntr = centers_init
         c = len(cntr)
-    else:
+    elif centers_init == 'random':
         cntr = None
+    elif centers_init == 'subtractive':
+        cntr = subtractive_clustering(dataset=data, ra=centers_init_subtractive_influence_range,
+           rejection_ratio=centers_init_subtractive_rejection_ratio,
+                                      acceptance_ratio=centers_init_subtractive_acceptance_ratio)
+        c = len(cntr)
+        if c == 0:
+            raise Exception('Subtractive clustering did not find any center')
+    elif centers_init == 'k-means++':
+        cntr = initialize(data=data.T, k=c)
+
 
     # Setup u0
     if init is None:
